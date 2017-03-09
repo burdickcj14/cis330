@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+	<!-- HEADER -->
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<style>
+			canvas {
+				border: 1px solid #d3d3d3;
+				background-color: #f1f1f1;
+			}
+		</style>
+	</head>
+	
+	<!-- BODY -->
+	<body onload = "startGame()">
+		<!-- SCRIPTS -->
+		<script>
+			<!-- VARIABLES -->
+			var gamePlayer;
+			var gameNotes = [];
+			var gameBad = 0;
+			var gameScore = 0;
+			var gameDifficulty = 1;
+			var gameDrop = 30;
+			var gameRamp = 9;
+			
+			<!-- NOTE SPRITES -->
+			var goodSpr = new Image(); goodSpr.src = "spr/notegood.png";
+			var badSpr = new Image(); badSpr.src = "spr/notebad.png";
+			var sachSpr = new Image(); sachSpr.src = "spr/sachertorte.png";
+			
+			<!-- BACKGROUND -->
+			var backImg = new Image(); backImg.src = "spr/back.png";
+			
+			<!-- SOUNDS -->
+			var soundMeroEat = new sound("snd/eat.mp3");
+			var soundMeroHurt = new sound("snd/hurt.mp3");
+			var soundGenGood = new sound("snd/good.mp3");
+			var soundGenBad = new sound("snd/bad.mp3");
+			var soundGenSach = new sound("snd/sachertorte.mp3");
+		
+			<!-- STARTING GAME -->
+			function startGame() {
+				gamePlayer = new playerObj();
+				gameSurf.start();
+			}
+
+			<!-- CREATING GAME SURFACE -->
+			var gameSurf = {
+				canvas : document.createElement("canvas"),
+				start : function() {
+					this.canvas.width = 480;
+					this.canvas.height = 360;
+					this.context = this.canvas.getContext("2d");
+					document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+					this.interval = setInterval(updateSurface, 20);
+					window.addEventListener('keydown', function (e) {
+						gameSurf.keys = (gameSurf.keys || []);
+						gameSurf.keys[e.keyCode] = true;
+					})
+					window.addEventListener('keyup', function (e) {
+						gameSurf.keys[e.keyCode] = false; 
+					})
+				},
+				clear : function() {
+					this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+				}
+			}
+			
+			<!-- ♫ MELODYTCHI ♫ -->
+			function playerObj() {
+				<!-- VARIABLES -->
+				this.x = 210;
+				this.y = 234;
+				this.speedX = 0;
+				this.speedY = 0;
+				this.immune = 0;
+				this.face = 1;
+				this.index = 0;
+				this.tick = 0;
+				this.speed = 5;
+				this.fric = (1/1.75);
+				
+				<!-- SPRITES -->
+				this.spriteLA = new Image(); this.spriteLA.src = "spr/meroL1.png";
+				this.spriteLB = new Image(); this.spriteLB.src = "spr/meroL2.png";
+				this.spriteRA = new Image(); this.spriteRA.src = "spr/meroR1.png";
+				this.spriteRB = new Image(); this.spriteRB.src = "spr/meroR2.png";
+
+				
+				<!-- DRAW -->
+				this.drawMe = function() {
+					if (this.immune == 0 || Math.round(this.immune / 2) == (this.immune / 2)) {
+						tC = gameSurf.context;
+						if (this.face == 1) {
+							if (this.index == 0) tC.drawImage(this.spriteRA, this.x, this.y, 62, 64);
+							else tC.drawImage(this.spriteRB, this.x, this.y, 62, 64);
+						}
+						else {
+							if (this.index == 0) tC.drawImage(this.spriteLA, this.x, this.y, 62, 64);
+							else tC.drawImage(this.spriteLB, this.x, this.y, 62, 64);
+						}
+					}
+				}
+				
+				<!-- PHYSICS -->
+				this.physics = function() {
+					<!-- RUN -->
+					if (gameSurf.keys && gameSurf.keys[37] && !gameSurf.keys[39]) {
+						if (this.speedX > -this.speed) {this.speedX -= this.fric;}
+						else if (this.speedX < -this.speed) {this.speedX += this.fric;}
+						this.face = 0;
+					}
+					else if (gameSurf.keys && !gameSurf.keys[37] && gameSurf.keys[39]) {
+						if (this.speedX > this.speed) {this.speedX -= this.fric;}
+						else if (this.speedX < this.speed) {this.speedX += this.fric;}
+						this.face = 1;
+					}
+					else if (this.speedY >= 0 && this.y >= 234) {
+						if (this.speedX > 0) {
+							this.speedX -= this.fric;
+							if (this.speedX < 0) {this.speedX = 0;}
+						}
+						else if (this.speedX < 0) {
+							this.speedX += this.fric;
+							if (this.speedX > 0) {this.speedX = 0;}
+						}
+					}
+				
+					<!-- JUMP -->
+					if (gameSurf.keys && gameSurf.keys[38] && this.speedY >= 0 && this.y >= 234) {this.speedY = -8;}
+				
+					<!-- IMMUNITY DROP -->
+					if (this.immune > 0) this.immune -= 1;
+				
+					<!-- X -->
+					this.x += this.speedX;
+					if (this.x < 0) {this.x = 0; this.speedX = 0;}
+					else if (this.x > 418) {this.x = 418; this.speedX = 0;}
+					
+					<!-- Y -->
+					this.speedY += (1/3);
+					this.y += this.speedY;
+					if (this.y > 234) {this.y = 234; this.speedY = 0;}
+					
+					<!-- ANIMTAIONS -->
+					if (this.speedY < 0 || this.y < 234) {this.index = 1; this.tick = 1;}
+					else if (this.speedX == 0) {this.index = 0; this.tick = 0;}
+					else {
+						if (this.tick > 0) this.tick -= 1;
+						else this.tick = 5;
+						if (this.tick < 3) this.index = 0;
+						else this.index = 1;
+					}
+				}
+				
+				<!-- DAMAGE -->
+				this.takeDamage = function(dir) {
+					this.playerImmune = 90;
+					this.speedX = 10 * dir;
+					this.speedY = -3.5;
+					this.immune = 30;
+					soundMeroHurt.play();
+					soundGenBad.play();
+				}
+			}
+			
+			<!-- ♫ MUSIC NOTES ♫ -->
+			function noteObj(type) {
+				<!-- VARIABLES -->
+				this.x = Math.round(Math.random() * 288) + 80;
+				this.y = -32;
+				this.speedX = (Math.random() * 1.75) + .75;
+				if (Math.round(Math.random()) == 1) {this.speedX *= -1;}
+				this.speedY = 0;
+				this.type = type;
+				this.bounce = (Math.random() * 5) + 10;
+				
+				<!-- DRAW -->
+				this.drawMe = function() {
+					tC = gameSurf.context;
+					if (this.type == 0) {tC.drawImage(goodSpr, this.x, this.y, 32, 32);}
+					else if (this.type == 1) {tC.drawImage(badSpr, this.x, this.y, 32, 32);}
+					else if (this.type == 2) {tC.drawImage(sachSpr, this.x, this.y, 32, 32);}
+				}
+				
+				<!-- PHYSICS -->
+				this.physics = function() {
+					<!-- X -->
+					this.x += this.speedX;
+					if (this. type == 1) {
+						if (this.x < 0) {this.x = 0; this.speedX *= -1;}
+						else if (this.x > 448) {this.x = 448; this.speedX *= -1;}
+					}
+					
+					<!-- Y -->
+					this.speedY += (1/3);
+					this.y += this.speedY;
+					if (this.y > 266) {this.y = 266; this.speedY = -this.bounce;}
+					
+					<!-- COLLISION -->
+					if (((this.x + 8 >= gamePlayer.x && this.x + 8 <= gamePlayer.x + 57) || (this.x + 23 >= gamePlayer.x && this.x + 23 <= gamePlayer.x + 57))
+						&& ((this.y + 8 >= gamePlayer.y && this.y + 8 <= gamePlayer.y + 59) || (this.y + 23 >= gamePlayer.y && this.y + 23 <= gamePlayer.y + 59))) {
+						if (this.type == 0) this.hitGood();
+						else if (this.type == 1 && gamePlayer.immune <= 0) this.hitBad();
+						else if (this.type == 2) this.hitSach();
+					}
+				}
+				
+				<!-- GOOD NOTE COLLECT -->
+				this.hitGood = function() {
+					this.x = -1000;
+					this.speedX = 0;
+					gameScore++;
+					soundGenGood.play();
+				}
+				
+				<!-- BAD NOTE HIT -->
+				this.hitBad = function() {
+					gameScore -= 3;
+					if (gameScore < 0) {gameScore = 0;}
+					gamePlayer.takeDamage(Math.sign((gamePlayer.x + 31) - (this.x + 16)));
+				}
+				
+				<!-- SACHERTORTE COLLECT -->
+				this.hitSach = function() {
+					this.x = -1000;
+					this.speedX = 0;
+					gamePlayer.immune = 225;
+					soundMeroEat.play();
+					soundGenSach.play();
+				}
+			}
+			
+			function sound(src) {
+				this.sound = document.createElement("audio");
+				this.sound.src = src;
+				this.sound.setAttribute("preload", "auto");
+				this.sound.setAttribute("controls", "none");
+				this.sound.style.display = "none";
+				document.body.appendChild(this.sound);
+				this.play = function(){
+					this.sound.currentTime = 0;
+					this.sound.play();
+				}
+			}
+			
+			<!-- DRAW FIELD -->
+			function updateSurface() {
+				<!-- COLLISION/PHYSICS -->
+				gamePlayer.physics();
+				for (i = 0; i < gameNotes.length; i += 1) {
+					gameNotes[i].physics();
+				}
+			
+				<!-- DRAWING -->
+				gameSurf.clear();
+				gameSurf.context.drawImage(backImg, 0, 0, 480, 360);
+				gamePlayer.drawMe();
+				for (i = 0; i < gameNotes.length; i += 1) {
+					gameNotes[i].drawMe();
+				}
+				
+				<!-- DROPPING -->
+				if (gameDrop > 0) {gameDrop--;}
+				else {
+					if (gameBad < gameDifficulty) {gameNotes.push(new noteObj(1)); gameBad++;}
+					else if (Math.round(Math.random() * 100) < 5) {gameNotes.push(new noteObj(2));}
+					else {gameNotes.push(new noteObj(0));}
+					gameDrop = 45;
+					if (gameRamp > 0) gameRamp--;
+					else {
+						gameRamp = 14;
+						if (gameDifficulty < 5) {gameDifficulty += 1;}
+					}
+				}
+				
+				<!-- SCORE -->
+				tC = gameSurf.context;
+				tC.font = "20px Arial";
+				tC.fillStyle = "black";
+				tC.fillText("♪ x " + gameScore, 4, 52);
+			}
+		</script>
+		<h3>LEFT/RIGHT: Run<br>UP: Jump<br><br>Collect the good music notes!<br>Avoid the bad music notes!<br>Eat the sachertorte to become invincible for a little bit!</h3>
+	</body>
+</html>
